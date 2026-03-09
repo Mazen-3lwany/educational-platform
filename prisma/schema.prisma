@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Roles {
+  USER
+  INSTRUCTOR
+  ADMIN
+}
+
+model User {
+  id                       String         @id @default(cuid())
+  name                     String
+  email                    String         @unique()
+  role                     Roles          @default(USER)
+  password                 String
+  isActive                 Boolean        @default(false) //verifing emails
+  isDeleted                Boolean        @default(false) // for use doft delete
+  verificationToken        String? //for verifiying email
+  verificationTokenExpires DateTime?
+  profileImage             String? // url of image tha uploaded in clodinary
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+  refreshTokens            RefreshToken[]
+  coursesCreated           Course[] /// relations for only instructor to create course
+  enrollments              Enrollment[] //courses that Student enrolles in
+  submissions QuizSubmission[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String
+  userId    String
+  user      User     @relation(references: [id], fields: [userId])
+  createdAt DateTime @default(now())
+}
+
+model Course {
+  id           String       @id @default(cuid())
+  title        String
+  decription   String
+  lessons      Lesson[]
+  bunner       String? // bunner for course come from cloudinary
+  instructorId String
+  instructor   User         @relation(fields: [instructorId], references: [id])
+  enrollments  Enrollment[] // users that enroll in this course
+  quizes  Quiz[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  studentId  String
+  courseId   String
+  student    User     @relation(fields: [studentId], references: [id])
+  course     Course   @relation(fields: [courseId], references: [id])
+  enrolledAt DateTime @default(now())
+  
+}
+
+model Lesson {
+  id         String   @id @default(cuid())
+  title      String
+  decription String
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id])
+  vedio      String //come from host or cloudinary
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  quizes    Quiz[]
+}
+
+model Quiz {
+  id String @id @default(cuid())
+  title String
+  description String?
+  totalScore Float
+  numberQuestions Int 
+  questions Question[]
+  courseId String?
+  lessonId String?
+  course Course? @relation(fields: [courseId], references: [id])
+  lesson Lesson? @relation(fields: [lessonId], references: [id])
+  submissions QuizSubmission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Question{
+  id String @id @default(cuid())
+  mark Float
+  question String
+  quizId String
+  quiz Quiz @relation(fields: [quizId],references: [id])
+  answers Answer[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model QuizSubmission {
+  id String @id @default(cuid())
+  quizId String
+  studentId String
+  score Float?
+  quiz Quiz @relation(fields: [quizId], references: [id])
+  student User @relation(fields: [studentId], references: [id])
+  answers Answer[]
+  submitedAt DateTime @default(now())
+}
+model Answer {
+  id String @id @default(cuid())
+  questionId String
+  submissionId String
+  selectedAnswer String
+  isCorrect Boolean
+  question Question @relation(fields: [questionId], references: [id])
+  submission QuizSubmission @relation(fields: [submissionId], references: [id])
+  createdAt DateTime @default(now())
+}
