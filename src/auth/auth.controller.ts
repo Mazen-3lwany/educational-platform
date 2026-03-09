@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { registerDto } from "./dtos/register.dto.js";
 import { AuthService } from "./auth.service.js";
 import { loginDto } from "./dtos/login.dto.js";
@@ -14,4 +14,13 @@ export class Authcontroller {
     public async login(@Body() loginData:loginDto){
         return await this.authService.login(loginData)
     }
+
+    @Get("/verify-email/:userId/:verificationToken")
+    public async verifiyToken(
+        @Param("userId") userId:string,
+        @Param("verificationToken") verificationToken:string
+    ){
+        return await this.authService.verifiyMail(userId,verificationToken)
+    }
+
 }
