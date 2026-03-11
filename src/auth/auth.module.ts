@@ -10,18 +10,27 @@ import { UserModule } from "../users/user.module.js";
 
 
 @Module({
-    imports:[
+    imports: [
         UserModule,
         MailModule,
         JwtModule.registerAsync({
-        imports:[ConfigModule],
-        inject:[ConfigService],
-        useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1d' },
-    }),
-    })],
-    controllers:[Authcontroller],
-    providers:[AuthService,PrismaService]
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                secret: configService.get<string>('JWT_SECRET'),
+                signOptions: { expiresIn: '1h' }
+            }),
+        }),
+        JwtModule.registerAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                secret: configService.get<string>('JWT_REFRESH_SECRET'), 
+                signOptions: { expiresIn: '7d' }                       
+            }),
+        })
+    ],
+    controllers: [Authcontroller],
+    providers: [AuthService, PrismaService]
 })
-export class AuthModule {}
+export class AuthModule { }

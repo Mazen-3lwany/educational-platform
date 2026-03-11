@@ -4,6 +4,7 @@ import { updateUserDto } from "./dtos/update.dto.js";
 import { registerDto } from "src/auth/dtos/register.dto.js";
 import * as crypto from "crypto";
 import { User } from "generated/prisma/client.js";
+import bcrypt from "bcryptjs";
 
 @Injectable()
 export class UserService {
@@ -64,5 +65,33 @@ export class UserService {
             }
         })
         return newUser
+    }
+    /**
+     * 
+     * @param userId //user id  to detect identity of user that has refresh token
+     * @param refreshToken // value that we want to store in DB
+     * @desc this method used to encrypt refreshToken and store it in DB
+     */
+    public async storeRefreshToken(userId:string,refreshToken:string){
+        const hashedToken=await bcrypt.hash(refreshToken,10)
+        await this.prisma.refreshToken.create({
+            data:{
+                userId,
+                token:hashedToken,
+                expireAt:new Date(Date.now()+60*60*1000*24*7)
+            }
+        })
+        
+    }
+    public async findTokensForSpecificUser(userId:string){
+        const tokens= await this.prisma.refreshToken.findMany({
+            where:{userId}
+        })
+        return tokens
+    }
+    public async deleteRefreshToken(id:string){
+        await this.prisma.refreshToken.delete({
+            where:{id}
+        })
     }
 }
