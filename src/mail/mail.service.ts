@@ -20,7 +20,7 @@ export class MailService {
                 </p>
 
                 <a
-                    href="{${link}}"
+                    href="${link}"
                     style="
                             display:inline-block;
                             padding:12px 20px;
@@ -40,6 +40,16 @@ export class MailService {
     <p>Thanks,<br/>The Team</p>
 </div>
                 `
+        })
+    }
+
+    public async resetPasswordEamil(eamil: string, link: string) {
+        return this.mailer.sendMail({
+            to: eamil,
+            subject: 'Reset Password',
+            html: `<p>Click this link to reset your password:</p>
+           <a href="${link}">Reset Password</a>
+           <p>This link will expire in 1 hour.</p>`,
         })
     }
 }

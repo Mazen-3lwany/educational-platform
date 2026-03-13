@@ -20,14 +20,6 @@ import { UserModule } from "../users/user.module.js";
                 secret: configService.get<string>('JWT_SECRET'),
                 signOptions: { expiresIn: '1h' }
             }),
-        }),
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            inject: [ConfigService],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_REFRESH_SECRET'), 
-                signOptions: { expiresIn: '7d' }                       
-            }),
         })
     ],
     controllers: [Authcontroller],

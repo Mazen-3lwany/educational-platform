@@ -1,7 +1,12 @@
-import { BadRequestException, Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { registerDto } from "./dtos/register.dto.js";
 import { AuthService } from "./auth.service.js";
 import { loginDto } from "./dtos/login.dto.js";
+import { AuthGuard } from "./guards/auth.guard.js";
+import { CurrentUser } from "./decorators/currentUser.decorator.js";
+import { type PayloadType } from "../utils/types.js";
+import { changePasswordType } from "./dtos/changePassword.dto.js";
+import { emailDto } from "./dtos/resendVerification.dto.js";
 
 @Controller("api/users/auth")
 export class Authcontroller {
@@ -39,4 +44,37 @@ export class Authcontroller {
             refreshToken: newTokens.refresh_Token,
         };
     }
+
+    @Post("logout")
+    logout(@Body("refreshToken") refreshToken: string) {
+        return this.authService.logout(refreshToken)
+    }
+
+    @Post("/forgot-password")
+    async forgotPassword(@Body("email") email: string) {
+        return await this.authService.forgotPassword(email)
+    }
+
+    @Post("/reset-password/:resetToken")
+    public async resetPassword(
+        @Param('resetToken') resetToken:string,
+        @Body("newPassword") newPassword:string
+    ){
+        return await this.authService.resetPassword(resetToken,newPassword)
+    }
+
+    @Patch("/change-password")
+    @UseGuards(AuthGuard)
+    public async changePassword(
+        @CurrentUser() payload:PayloadType,
+        @Body('passwords') passwords:changePasswordType
+    ){
+        return await this.authService.changePassword(payload,passwords)
+    }
+    @Patch("/resend-verifiy-email")
+    public async resendVerifiyEmail(
+        @Body('email')  email:emailDto
+    ){
+        return this.authService.resendVerificationEmail(email)
+    } 
 }

@@ -5,6 +5,7 @@ import { registerDto } from "src/auth/dtos/register.dto.js";
 import * as crypto from "crypto";
 import { User } from "generated/prisma/client.js";
 import bcrypt from "bcryptjs";
+import { ResetPassword } from "../utils/types.js";
 
 @Injectable()
 export class UserService {
@@ -50,6 +51,7 @@ export class UserService {
      */
     public async findUserWithEmail(email: string) {
         const user = await this.prisma.user.findUnique({ where: { email } })
+        if(!user) throw new NotFoundException("User not founded")
         return user
     }
 
@@ -72,26 +74,65 @@ export class UserService {
      * @param refreshToken // value that we want to store in DB
      * @desc this method used to encrypt refreshToken and store it in DB
      */
-    public async storeRefreshToken(userId:string,refreshToken:string){
-        const hashedToken=await bcrypt.hash(refreshToken,10)
+    public async storeRefreshToken(userId: string, refreshToken: string) {
+        const hashedToken = await bcrypt.hash(refreshToken, 10)
         await this.prisma.refreshToken.create({
-            data:{
+            data: {
                 userId,
-                token:hashedToken,
-                expireAt:new Date(Date.now()+60*60*1000*24*7)
+                token: hashedToken,
+                expireAt: new Date(Date.now() + 60 * 60 * 1000 * 24 * 7)
             }
         })
-        
+
     }
-    public async findTokensForSpecificUser(userId:string){
-        const tokens= await this.prisma.refreshToken.findMany({
-            where:{userId}
+    public async findTokensForSpecificUser(userId: string) {
+        const tokens = await this.prisma.refreshToken.findMany({
+            where: { userId }
         })
         return tokens
     }
-    public async deleteRefreshToken(id:string){
+    public async deleteRefreshToken(id: string) {
         await this.prisma.refreshToken.delete({
-            where:{id}
+            where: { id }
+        })
+    }
+
+    public async deleteRefreshTokensforSpecificUser(userId: string) {
+        await this.prisma.refreshToken.deleteMany({ where: { userId } })
+    }
+
+    public async createRestPassword(userId: string, resetPasswordData: ResetPassword) {
+        // delete old reset password token if exist for this user
+        await this.prisma.passwordResetToken.deleteMany({ where: { userId } })
+        
+        await this.prisma.passwordResetToken.create(
+            {
+                data: {
+                    userId,
+                    token: resetPasswordData.hashedResetToken,
+                    expireAt: resetPasswordData.expireAt
+                }
+            }
+        )
+    }
+    public async getPasswordToken(token: string) {
+        const resetToken = await this.prisma.passwordResetToken.findUnique({ where: { token } })
+        if (!resetToken) {
+            throw new NotFoundException('Ivalid reset password token')
+        }
+        return resetToken
+    }
+
+    public async deleteResetPassword(id: string) {
+        await this.prisma.passwordResetToken.delete({ where: { id } })
+    }
+
+    public async updatePassword(userId:string,hashedPassword:string){
+        await this.prisma.user.update({
+            where:{id:userId},
+            data:{
+                password:hashedPassword
+            }
         })
     }
 }

@@ -11,3 +11,9 @@ export type tokenType= {
     userId: string;
     expireAt: Date;
 }|null
+
+export type ResetPassword={
+    token:string
+    expireAt:Date
+    hashedResetToken:string
+}
