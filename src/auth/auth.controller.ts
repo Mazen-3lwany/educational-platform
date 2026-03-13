@@ -7,20 +7,24 @@ import { CurrentUser } from "./decorators/currentUser.decorator.js";
 import { type PayloadType } from "../utils/types.js";
 import { changePasswordType } from "./dtos/changePassword.dto.js";
 import { emailDto } from "./dtos/resendVerification.dto.js";
+import { Throttle } from "@nestjs/throttler";
 
 @Controller("api/users/auth")
 export class Authcontroller {
     constructor(private readonly authService: AuthService) { }
     @Post("/register")
+    @Throttle({default:{limit:20,ttl:60000}})
     public async register(@Body() userData: registerDto) {
         return await this.authService.register(userData)
     }
     @Post("/login")
+    @Throttle({default:{limit:5,ttl:60000}})
     public async login(@Body() loginData: loginDto) {
         return await this.authService.login(loginData)
     }
 
     @Get("/verify-email/:userId/:verificationToken")
+    @Throttle({default:{limit:20,ttl:60000}})
     public async verifiyToken(
         @Param("userId") userId: string,
         @Param("verificationToken") verificationToken: string
@@ -51,11 +55,13 @@ export class Authcontroller {
     }
 
     @Post("/forgot-password")
+    @Throttle({default:{limit:5,ttl:60000}})
     async forgotPassword(@Body("email") email: string) {
         return await this.authService.forgotPassword(email)
     }
 
     @Post("/reset-password/:resetToken")
+    @Throttle({default:{limit:5,ttl:60000}})
     public async resetPassword(
         @Param('resetToken') resetToken:string,
         @Body("newPassword") newPassword:string
@@ -64,6 +70,7 @@ export class Authcontroller {
     }
 
     @Patch("/change-password")
+    @Throttle({default:{limit:10,ttl:60000}})
     @UseGuards(AuthGuard)
     public async changePassword(
         @CurrentUser() payload:PayloadType,
@@ -72,6 +79,7 @@ export class Authcontroller {
         return await this.authService.changePassword(payload,passwords)
     }
     @Patch("/resend-verifiy-email")
+    @Throttle({default:{limit:5,ttl:60000}})
     public async resendVerifiyEmail(
         @Body('email')  email:emailDto
     ){

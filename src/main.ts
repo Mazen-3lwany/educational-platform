@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js'; 
 import { ValidationPipe } from '@nestjs/common';
 
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -11,6 +12,8 @@ async function bootstrap() {
     forbidNonWhitelisted:true, // reject addtional property tha tnot found in DTO class
     transform:true // convert JSON to class instance
   }))
+  // rate limit 
+  
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
