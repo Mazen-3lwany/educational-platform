@@ -43,7 +43,7 @@ model RefreshToken {
   id        String   @id @default(cuid())
   token     String
   userId    String
-  user      User     @relation(references: [id], fields: [userId])
+  user      User     @relation(references: [id], fields: [userId],onDelete: Cascade)
   expireAt  DateTime
   createdAt DateTime @default(now())
 }
@@ -138,6 +138,6 @@ model PasswordResetToken {
   userId    String
   token     String   @unique
   expireAt  DateTime
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id],onDelete: Cascade)
   createdAt DateTime @default(now())
 }

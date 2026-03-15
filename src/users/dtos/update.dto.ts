@@ -1,9 +1,14 @@
 import { IsOptional, IsString, Length } from "class-validator";
 
-export class updateUserDto {
-    @IsString()
+export class updateMeDto {
     @IsOptional()
+    @IsString()
     @Length(3)
-    name:string
+    name?: string
+
+    @IsOptional()
+    @IsString()
+    profileImage?: string
+
 
 }

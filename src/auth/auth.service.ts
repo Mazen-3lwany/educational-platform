@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable,  UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable,  NotFoundException,  UnauthorizedException } from "@nestjs/common";
 import { registerDto } from "./dtos/register.dto.js";
 import bcrypt from "bcryptjs";
 import { loginDto } from "./dtos/login.dto.js";
@@ -45,12 +45,14 @@ export class AuthService {
         // check if email or user is exist in DB
         const user = await this.userService.findUserWithEmail(email)
         if (!user) throw new UnauthorizedException("Invalid email or password")
+        if(user.isDeleted) throw new ForbiddenException("Account is deleted");
         // check password is valid 
         const isValidPassword = await bcrypt.compare(password, user.password)
         if (!isValidPassword) throw new UnauthorizedException("Invalid email or password")
         if (!user.isActive) {
             return await this.checkVerificationToken(user)
         }
+
         // generate tokens
         const tokens = await this.generateTokens({ id: user.id, role: user.role })
         await this.userService.storeRefreshToken(user.id, tokens.refresh_Token)
@@ -62,7 +64,7 @@ export class AuthService {
     }
     ///////////////////////////////////////////////////////////////////////////////////
     public async verifiyMail(userId: string, verificationToken: string) {
-        const user = await this.userService.getCurrentUser(userId)
+        const user = await this.userService.findUserById(userId)
         if (!user.verificationToken) {
             throw new BadRequestException("Invalid verification link");
         }
@@ -158,7 +160,7 @@ export class AuthService {
 
     public async changePassword(payload: PayloadType, passwords: changePasswordType) {
         // get user form Db with user Id
-        const user = await this.userService.getCurrentUser(payload.id)
+        const user = await this.userService.findUserById(payload.id)
         //check if password that pass from request equal password that stored in DB with hashed
         const isValidPass = await bcrypt.compare(passwords.oldPass, user.password)
         if (!isValidPass) throw new BadRequestException("Invalid Password")
@@ -176,6 +178,7 @@ export class AuthService {
     public async resendVerificationEmail(email:emailDto) {
         const userEmail=email.email
         const user = await this.userService.findUserWithEmail(userEmail)
+        if(!user) throw new NotFoundException('user not found')
         if(!user.isActive){
             return await this.checkVerificationToken(user)
         }
