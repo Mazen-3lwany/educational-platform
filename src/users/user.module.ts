@@ -4,6 +4,7 @@ import { UserService } from "./user.service.js";
 import { PrismaService } from "../prisma.service.js";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { FileUploadService } from "../uploads/upload.service.js";
 
 @Module({
     imports:[ JwtModule.registerAsync({
@@ -15,7 +16,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
         }),
         })],
     controllers:[UserController],
-    providers:[UserService,PrismaService],
+    providers:[UserService,PrismaService,FileUploadService],
     exports:[UserService]
 })
 export class UserModule {}

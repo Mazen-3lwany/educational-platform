@@ -7,7 +7,7 @@ import { APP_GUARD } from '@nestjs/core';
 
 
 @Module({
-  imports: [ConfigModule.forRoot(), UserModule, AuthModule,
+  imports: [ConfigModule.forRoot({isGlobal:true}), UserModule, AuthModule,
   ThrottlerModule.forRoot({
     throttlers: [
       {

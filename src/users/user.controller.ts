@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { UserService } from "./user.service.js";
 import { AuthGuard } from "../auth/guards/auth.guard.js";
 import { CurrentUser } from "../auth/decorators/currentUser.decorator.js";
@@ -10,6 +10,7 @@ import { updateMeDto } from "./dtos/update.dto.js";
 import { Roles } from "../../generated/prisma/enums.js";
 import { GetUsersQueryDto } from "./dtos/usersQuery.dto.js";
 import { updateForAdminDto } from "./dtos/updateForAdmin.dto.js";
+import { FileInterceptor } from "@nestjs/platform-express";
 
 
 @Controller("api/users")
@@ -44,8 +45,29 @@ export class UserController {
     public async updateMe(@CurrentUser() payload: PayloadType, @Body() updateData: updateMeDto) {
         return this.userService.updateUser(payload.id, updateData)
     }
-    @Patch("/:id")
 
+    @Patch("/profile-image")
+    @UseGuards(AuthGuard)
+    @UseInterceptors(FileInterceptor('profileImage', {
+        limits: {
+            fileSize: 2 * 1024 * 1024, // 2MB
+        },
+        fileFilter: (req, file, cb) => {
+            if (!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {
+                return cb(new Error('Only image files are allowed!'), false);
+            }
+            cb(null, true);
+        },
+    }))
+    public updateProfileImage(
+        @CurrentUser() payload: PayloadType,
+        @UploadedFile() file?: Express.Multer.File
+    ) {
+        console.log(payload);
+        return this.userService.updateProfileImage(payload.id, file)
+    }
+
+    @Patch("/:id")
     @UseGuards(AuthGuard, RolesGuard)
     @userRoles(Roles.ADMIN)
     public async updateSpecificUser(
@@ -78,4 +100,6 @@ export class UserController {
     ) {
         return this.userService.softDeleteUser(id)
     }
+
+
 }

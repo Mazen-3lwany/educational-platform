@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma.service.js";
 import { registerDto } from "src/auth/dtos/register.dto.js";
 import * as crypto from "crypto";
@@ -6,10 +6,14 @@ import { User } from "generated/prisma/client.js";
 import bcrypt from "bcryptjs";
 import { ResetPassword } from "../utils/types.js";
 import { Prisma } from "generated/prisma/client.js";
+import { FileUploadService } from "../uploads/upload.service.js";
 
 @Injectable()
 export class UserService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly uploadFile: FileUploadService
+    ) { }
     /**
      * @desc Get User With id
      */
@@ -63,7 +67,7 @@ export class UserService {
                 }
             ),
             this.prisma.user.count({
-                where:{isDeleted:false} // for count only users not deleted 
+                where: { isDeleted: false } // for count only users not deleted 
             })
         ])
 
@@ -115,7 +119,7 @@ export class UserService {
         return user
     }
 
-    public async createUser(userData: registerDto, hashedPassword: string) {
+    public async createUser(userData: registerDto, hashedPassword: string, profileImage?: string, public_Id?: string) {
         const { name, email } = userData;
         const newUser = await this.prisma.user.create({
             data: {
@@ -123,7 +127,9 @@ export class UserService {
                 email,
                 password: hashedPassword,
                 verificationToken: crypto.randomBytes(32).toString('hex'),
-                verificationTokenExpires: new Date(Date.now() + 60 * 60 * 1000)
+                verificationTokenExpires: new Date(Date.now() + 60 * 60 * 1000),
+                profileImage: profileImage,
+                publicImageId: public_Id
             }
         })
         return newUser
@@ -233,5 +239,23 @@ export class UserService {
         } catch {
             throw new NotFoundException("user not found")
         }
+    }
+    public async updateProfileImage(userId: string, file?: Express.Multer.File) {
+        if (!file) throw new BadRequestException("Image not found")
+        // get user 
+        const user = await this.findUserById(userId)
+        //delete old image profile
+        if (user.publicImageId) {
+            await this.uploadFile.deleteFile(user.publicImageId)
+        }
+        // upload new image profile
+        const result = await this.uploadFile.uploadFile(file)
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                profileImage: result.secure_url,
+                publicImageId: result.public_id
+            }
+        })
     }
 }

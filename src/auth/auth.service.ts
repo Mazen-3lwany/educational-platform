@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable,  NotFoundException,  UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { registerDto } from "./dtos/register.dto.js";
 import bcrypt from "bcryptjs";
 import { loginDto } from "./dtos/login.dto.js";
@@ -11,6 +11,7 @@ import { ConfigService } from "@nestjs/config";
 import { changePasswordType } from "./dtos/changePassword.dto.js";
 import { User } from "generated/prisma/client.js";
 import { emailDto } from "./dtos/resendVerification.dto.js";
+import { FileUploadService } from "../uploads/upload.service.js";
 
 
 @Injectable()
@@ -19,15 +20,24 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly maileService: MailService,
         private readonly userService: UserService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly fileUploadService: FileUploadService
     ) { }
 
-    public async register(userData: registerDto) {
+    public async register(userData: registerDto, file?: Express.Multer.File) {
         const { email, password } = userData;
+        let profileImageUrl: string | undefined;
+        let public_Id:string|undefined;
+        if (file) {
+            const uploadResult = await this.fileUploadService.uploadFile(file);
+            profileImageUrl = uploadResult.secure_url;
+            public_Id=uploadResult.public_id;
+        }
+
         const existingUser = await this.userService.findUserWithEmail(email)
         if (existingUser) throw new BadRequestException("You have Account with this Email")
         const hashedPassword = await this.hashPassword(password)
-        const newUser = await this.userService.createUser(userData, hashedPassword)
+        const newUser = await this.userService.createUser(userData, hashedPassword,profileImageUrl,public_Id)
         // generate Link
         const link = this.generateVerificationLink(newUser.id, newUser.verificationToken as string)
         console.log(link)
@@ -45,7 +55,7 @@ export class AuthService {
         // check if email or user is exist in DB
         const user = await this.userService.findUserWithEmail(email)
         if (!user) throw new UnauthorizedException("Invalid email or password")
-        if(user.isDeleted) throw new ForbiddenException("Account is deleted");
+        if (user.isDeleted) throw new ForbiddenException("Account is deleted");
         // check password is valid 
         const isValidPassword = await bcrypt.compare(password, user.password)
         if (!isValidPassword) throw new UnauthorizedException("Invalid email or password")
@@ -175,15 +185,15 @@ export class AuthService {
         }
     }
 
-    public async resendVerificationEmail(email:emailDto) {
-        const userEmail=email.email
+    public async resendVerificationEmail(email: emailDto) {
+        const userEmail = email.email
         const user = await this.userService.findUserWithEmail(userEmail)
-        if(!user) throw new NotFoundException('user not found')
-        if(!user.isActive){
+        if (!user) throw new NotFoundException('user not found')
+        if (!user.isActive) {
             return await this.checkVerificationToken(user)
         }
         return {
-            message:"If the email exists and is not verified, a verification link has been sent. "
+            message: "If the email exists and is not verified, a verification link has been sent. "
         }
     }
     private async generateTokens(payload: PayloadType) {
@@ -248,7 +258,7 @@ export class AuthService {
         let verificationToken = user.verificationToken
         let verificationTokenExpires = user.verificationTokenExpires
         if (
-            !user.verificationToken||
+            !user.verificationToken ||
             (user.verificationTokenExpires && user.verificationTokenExpires < new Date())
         ) {
             verificationToken = crypto.randomBytes(32).toString('hex')
@@ -258,10 +268,10 @@ export class AuthService {
             verificationToken,
             verificationTokenExpires
         })
-        const link = this.generateVerificationLink(user.id, user.verificationToken??"")
+        const link = this.generateVerificationLink(user.id, user.verificationToken ?? "")
         await this.maileService.verificationEmail(user.email, link)
         return {
-            message:"Your email is not verified. A verification link has been sent."
+            message: "Your email is not verified. A verification link has been sent."
         }
 
     }
