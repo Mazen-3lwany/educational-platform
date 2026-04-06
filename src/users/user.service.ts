@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma.service.js";
-import { registerDto } from "src/auth/dtos/register.dto.js";
+import { registerDto } from "../auth/dtos/register.dto.js";
 import * as crypto from "crypto";
-import { User } from "generated/prisma/client.js";
+import { User } from "../../generated/prisma/client.js";
 import bcrypt from "bcryptjs";
 import { ResetPassword } from "../utils/types.js";
-import { Prisma } from "generated/prisma/client.js";
+import { Prisma } from "../../generated/prisma/client.js";
 import { FileUploadService } from "../uploads/upload.service.js";
 
 @Injectable()

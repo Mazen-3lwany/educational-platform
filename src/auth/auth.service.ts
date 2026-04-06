@@ -9,7 +9,7 @@ import { MailService } from "../mail/mail.service.js";
 import { UserService } from "../users/user.service.js";
 import { ConfigService } from "@nestjs/config";
 import { changePasswordType } from "./dtos/changePassword.dto.js";
-import { User } from "generated/prisma/client.js";
+import { User } from "../../generated/prisma/client.js";
 import { emailDto } from "./dtos/resendVerification.dto.js";
 import { FileUploadService } from "../uploads/upload.service.js";
 

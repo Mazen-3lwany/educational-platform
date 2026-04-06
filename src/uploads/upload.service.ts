@@ -15,7 +15,7 @@ export class FileUploadService {
             secure: true,
         });
     }
-    async uploadFile(file: Express.Multer.File): Promise<UploadApiResponse> {
+    async uploadFile(file:Express.Multer.File): Promise<UploadApiResponse> {
         if (!file) throw new BadRequestException("No file provided");
 
         return new Promise((resolve, reject) => {
