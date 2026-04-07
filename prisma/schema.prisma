@@ -19,6 +19,12 @@ enum Roles {
   ADMIN
 }
 
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model User {
   id                       String               @id @default(cuid())
   name                     String
@@ -52,15 +58,22 @@ model RefreshToken {
 model Course {
   id           String       @id @default(cuid())
   title        String
-  decription   String
+  description  String
   lessons      Lesson[]
-  bunner       String? // bunner for course come from cloudinary
+  bannerUrl    String? // banner for course come from cloudinary
+  publicBannerId String?
   instructorId String
   instructor   User         @relation(fields: [instructorId], references: [id])
   enrollments  Enrollment[] // users that enroll in this course
-  quizes       Quiz[]
+  quizzes      Quiz[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  isDeleted    Boolean      @default(false)
+  deletedAt    DateTime?
+  status       CourseStatus @default(DRAFT)
+
+  @@unique([title, instructorId]) //to prevent instructor to create multiple course with same title
+  @@index([instructorId])
 }
 
 model Enrollment {

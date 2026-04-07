@@ -16,6 +16,7 @@ import { GoogleStrategy } from "./strategies/google.strategy.js";
         UserModule,
         MailModule,
         JwtModule.registerAsync({
+            global: true,
             imports: [ConfigModule],
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => ({
@@ -25,6 +26,6 @@ import { GoogleStrategy } from "./strategies/google.strategy.js";
         })
     ],
     controllers: [Authcontroller],
-    providers: [AuthService, PrismaService,FileUploadService,GoogleStrategy]
+    providers: [AuthService, PrismaService, FileUploadService, GoogleStrategy]
 })
 export class AuthModule { }

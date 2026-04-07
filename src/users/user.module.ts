@@ -4,10 +4,11 @@ import { UserService } from "./user.service.js";
 import { PrismaService } from "../prisma.service.js";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { FileUploadService } from "../uploads/upload.service.js";
+import { UploadFileModule } from "../uploads/upload.module.js";
 
 @Module({
-    imports:[ JwtModule.registerAsync({
+    imports:[ UploadFileModule, 
+        JwtModule.registerAsync({
             imports:[ConfigModule],
             inject:[ConfigService],
             useFactory: (configService: ConfigService) => ({
@@ -16,7 +17,7 @@ import { FileUploadService } from "../uploads/upload.service.js";
         }),
         })],
     controllers:[UserController],
-    providers:[UserService,PrismaService,FileUploadService],
+    providers:[UserService,PrismaService],
     exports:[UserService]
 })
 export class UserModule {}
