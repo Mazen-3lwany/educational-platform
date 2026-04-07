@@ -17,3 +17,10 @@ export type ResetPassword={
     expireAt:Date
     hashedResetToken:string
 }
+export type UserType={
+    id:string,
+    role:Roles,
+    profileImage:string,
+    email:string,
+    isActive:true
+}

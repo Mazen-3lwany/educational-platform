@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { registerDto } from "./dtos/register.dto.js";
 import bcrypt from "bcryptjs";
 import { loginDto } from "./dtos/login.dto.js";
-import { PayloadType, tokenType } from "../utils/types.js";
+import { PayloadType, tokenType, UserType } from "../utils/types.js";
 import { JwtService } from "@nestjs/jwt";
 import * as crypto from "crypto";
 import { MailService } from "../mail/mail.service.js";
@@ -27,17 +27,17 @@ export class AuthService {
     public async register(userData: registerDto, file?: Express.Multer.File) {
         const { email, password } = userData;
         let profileImageUrl: string | undefined;
-        let public_Id:string|undefined;
+        let public_Id: string | undefined;
         if (file) {
             const uploadResult = await this.fileUploadService.uploadFile(file);
             profileImageUrl = uploadResult.secure_url;
-            public_Id=uploadResult.public_id;
+            public_Id = uploadResult.public_id;
         }
 
         const existingUser = await this.userService.findUserWithEmail(email)
         if (existingUser) throw new BadRequestException("You have Account with this Email")
         const hashedPassword = await this.hashPassword(password)
-        const newUser = await this.userService.createUser(userData, hashedPassword,profileImageUrl,public_Id)
+        const newUser = await this.userService.createUser(userData, hashedPassword, profileImageUrl, public_Id)
         // generate Link
         const link = this.generateVerificationLink(newUser.id, newUser.verificationToken as string)
         console.log(link)
@@ -57,6 +57,7 @@ export class AuthService {
         if (!user) throw new UnauthorizedException("Invalid email or password")
         if (user.isDeleted) throw new ForbiddenException("Account is deleted");
         // check password is valid 
+        if (!user.password) throw new NotFoundException('password not found')
         const isValidPassword = await bcrypt.compare(password, user.password)
         if (!isValidPassword) throw new UnauthorizedException("Invalid email or password")
         if (!user.isActive) {
@@ -172,6 +173,7 @@ export class AuthService {
         // get user form Db with user Id
         const user = await this.userService.findUserById(payload.id)
         //check if password that pass from request equal password that stored in DB with hashed
+        if (!user.password) throw new NotFoundException('password not found')
         const isValidPass = await bcrypt.compare(passwords.oldPass, user.password)
         if (!isValidPass) throw new BadRequestException("Invalid Password")
         if (passwords.newPass !== passwords.confirmPass) throw new BadRequestException("Passwords do not match")
@@ -274,5 +276,26 @@ export class AuthService {
             message: "Your email is not verified. A verification link has been sent."
         }
 
+    }
+
+    public async handleGoogleLogin(profile: any) {
+        const email =
+            profile.emails?.[0]?.value ||
+            profile._json?.email;
+        if (!email) throw new NotFoundException("email not found")
+        let user = await this.userService.findUserWithEmail(email as string)
+        if (!user) {
+            user = await this.userService.createOAuthUser(profile)
+
+        }
+        return user;
+    }
+
+    public async loginWithOauth(user: UserType) {
+        const isUserExist = await this.userService.findUserWithEmail(user.email)
+        if (!isUserExist) throw new NotFoundException("Invalid user")
+        const payload = { id: user.id, role: user.role }
+        const tokens = this.generateTokens(payload)
+        return tokens
     }
 }

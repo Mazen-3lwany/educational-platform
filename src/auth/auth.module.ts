@@ -7,6 +7,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MailModule } from "../mail/mail.module.js";
 import { UserModule } from "../users/user.module.js";
 import { FileUploadService } from "../uploads/upload.service.js";
+import { GoogleStrategy } from "./strategies/google.strategy.js";
 
 
 
@@ -24,6 +25,6 @@ import { FileUploadService } from "../uploads/upload.service.js";
         })
     ],
     controllers: [Authcontroller],
-    providers: [AuthService, PrismaService,FileUploadService]
+    providers: [AuthService, PrismaService,FileUploadService,GoogleStrategy]
 })
 export class AuthModule { }

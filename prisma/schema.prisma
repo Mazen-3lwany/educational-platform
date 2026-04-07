@@ -24,7 +24,7 @@ model User {
   name                     String
   email                    String               @unique()
   role                     Roles                @default(USER)
-  password                 String
+  password                 String?
   isActive                 Boolean              @default(false) //verifing emails
   isDeleted                Boolean              @default(false) // for use doft delete
   verificationToken        String? //for verifiying email

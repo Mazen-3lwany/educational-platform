@@ -258,4 +258,38 @@ export class UserService {
             }
         })
     }
+
+
+    async createOAuthUser(profile: any) {
+        console.log(profile);
+        const email =
+            profile.emails?.[0]?.value ||
+            profile._json?.email;
+
+        const name =
+            profile.displayName ||
+            profile._json?.name;
+
+        const image =
+            profile.photos?.[0]?.value ||
+            profile._json?.picture;
+
+        if (!email) {
+            throw new BadRequestException("Email not found in Google profile");
+        }
+        
+        const user = await this.prisma.user.create({
+            data: {
+                name: name,
+                email,
+                profileImage: image,
+                password: null, // مهم جدًا
+                verificationToken: null,
+                verificationTokenExpires: null,
+                isActive:true
+            },
+        });
+
+        return user;
+    }
 }

@@ -1,15 +1,16 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post,  UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { registerDto } from "./dtos/register.dto.js";
 import { AuthService } from "./auth.service.js";
 import { loginDto } from "./dtos/login.dto.js";
 import { AuthGuard } from "./guards/auth.guard.js";
-import { CurrentUser } from "./decorators/currentUser.decorator.js";
-import { type PayloadType } from "../utils/types.js";
+import { CurrentOauthUser, CurrentUser } from "./decorators/currentUser.decorator.js";
+import { type UserType,  type PayloadType } from "../utils/types.js";
 import { changePasswordType } from "./dtos/changePassword.dto.js";
 import { emailDto } from "./dtos/resendVerification.dto.js";
 import { Throttle } from "@nestjs/throttler";
 
 import { FileInterceptor } from "@nestjs/platform-express";
+import { GoogleAuthGuard } from "./guards/google-auth.guard.js";
 
 
 @Controller("api/users/auth")
@@ -107,5 +108,17 @@ export class Authcontroller {
         @Body('email') email: emailDto
     ) {
         return this.authService.resendVerificationEmail(email)
+    }
+
+    // sign in with Oauth (google)
+    @Get('google')
+    @UseGuards(GoogleAuthGuard)
+    public googleAuth(){
+        // turn user to google
+    }
+    @Get('/google/callback')
+    @UseGuards(GoogleAuthGuard)
+    async googleAuthRedirect(@CurrentOauthUser() user:UserType){
+        return this.authService.loginWithOauth(user)
     }
 }
