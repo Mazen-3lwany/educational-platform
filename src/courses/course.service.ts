@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma.service.js";
 import { PayloadType } from "../utils/types.js";
 import { createCourseDTO } from "./dtos/createCourse.dto.js";
@@ -12,7 +12,15 @@ export class CourseService {
         private readonly prisma: PrismaService,
         private readonly userService: UserService,
         private readonly uploadService: FileUploadService
-    ) {}
+    ) { }
+    /**
+     * 
+     * @param payload 
+     * @param courseData 
+     * @param file 
+     * @description  create course and store it in DB
+     * @returns course
+     */
     public async createCourse(payload: PayloadType, courseData: createCourseDTO, file?: Express.Multer.File) {
         const user = await this.userService.findUserById(payload.id)// I have inside this method check for user founded or not.
         if (user.role !== Roles.INSTRUCTOR) {
@@ -59,5 +67,65 @@ export class CourseService {
             }
             throw err
         }
+    }
+
+    public async getCourseById(courseId: string) {
+        const course = await this.prisma.course.findFirst({
+            where: {
+                id: courseId,
+                isDeleted: false
+            }
+        })
+        if (!course) throw new NotFoundException('course not found')
+        return course
+    }
+
+    public async getAllCourses(page: number, limit: number) {
+        const [courses, total] = await Promise.all([
+            this.prisma.course.findMany({
+                where: {
+                    isDeleted: false,
+                    // status: 'PUBLISHED'// if you want to show only published courses in the list
+                },
+                skip: (page - 1) * limit,
+                take: limit
+            }),
+            this.prisma.course.count({
+                where: {
+                    isDeleted: false,
+                    // status: 'PUBLISHED'
+                }
+            })
+        ])
+        return {
+            data: courses,
+            total,
+            page,
+            limit
+        }
+    }
+
+    public async getCoursesByInstructor(instructorId: string) {
+        const courses = await this.prisma.course.findMany({
+            where: {
+                instructorId: instructorId,
+                // status: 'PUBLISHED',
+                isDeleted: false
+            }
+        })
+        if (courses.length === 0) return []
+        return courses
+    }
+    public async getMyCourses(payload: PayloadType) {
+        if (payload.role !== Roles.INSTRUCTOR) {
+            throw new ForbiddenException('Not allowed')
+        }
+        const courses = await this.prisma.course.findMany({
+            where: {
+                instructorId: payload.id,
+                isDeleted: false
+            }
+        })
+        return courses
     }
 }

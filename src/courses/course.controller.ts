@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { CourseService } from "./course.service.js";
 import { CurrentUser } from "../auth/decorators/currentUser.decorator.js";
 import {type PayloadType } from "../utils/types.js";
@@ -34,7 +34,33 @@ export class CourseController{
         @UploadedFile() file?:Express.Multer.File
         
     ){
-        console.log("Controller reached");
         return await this.courseService.createCourse(payload,courseData,file)
+    }
+    @Get("/specific/:courseId")
+    public async getSpecificCourse(@Param('courseId') courseId:string){
+        return this.courseService.getCourseById(courseId)
+    }
+    @Get("/")
+    public async getAllCourses(
+        @Query('page') Page:string,
+        @Query('limit') Limit:string
+    ){
+        const page = Number(Page)||1
+        const limit= Number(Limit)||10
+        return this.courseService.getAllCourses(page,limit)
+    }
+    @Get('/instructor-courses/:instructorId')
+    public async getCoursesByInstructor(
+        @Param('instructorId') instructorId:string
+    ){
+        return this.courseService.getCoursesByInstructor(instructorId)
+    }
+    @Get("/mycourses")
+    @UseGuards(AuthGuard,RolesGuard)
+    @userRoles('INSTRUCTOR')
+    public async getInstructorCourses(
+        @CurrentUser() payload:PayloadType
+    ){
+        return this.courseService.getMyCourses(payload)
     }
 }
