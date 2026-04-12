@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { CourseService } from "./course.service.js";
 import { CurrentUser } from "../auth/decorators/currentUser.decorator.js";
 import {type PayloadType } from "../utils/types.js";
@@ -106,5 +106,23 @@ public async updateCourseStatus(
 
 
 //delete course (soft delete)
+@Delete('/delete/:courseId')
+@UseGuards(AuthGuard,RolesGuard)
+@userRoles('INSTRUCTOR')
+public async deleteCourse(
+    @Param('courseId') courseId:string,
+    @CurrentUser()payload:PayloadType
+){
+    return this.courseService.deleteCourse(courseId,payload)
+}
 
+@Patch('restore/:courseId')
+@UseGuards(AuthGuard,RolesGuard)
+@userRoles('INSTRUCTOR')
+public async restoreCourse(
+    @Param('courseId') courseId:string,
+    @CurrentUser() payload:PayloadType
+){
+    return this.courseService.restoreCourse(courseId,payload)
+}
 }

@@ -4,7 +4,7 @@ import { PayloadType } from "../utils/types.js";
 import { createCourseDTO } from "./dtos/createCourse.dto.js";
 import { UserService } from "../users/user.service.js";
 import { FileUploadService } from "../uploads/upload.service.js";
-import {  Prisma, Roles } from "../../generated/prisma/client.js";
+import { Prisma, Roles } from "../../generated/prisma/client.js";
 import { updateCourse } from "./dtos/updateCourse.dto.js";
 import { UpdateCourseStatusDto } from "./dtos/updateCourseStatus.dto.js";
 
@@ -191,5 +191,45 @@ export class CourseService {
             }
         })
         return updatedCourse
+    }
+    public async deleteCourse(courseId: string, payload: PayloadType) {
+        if (payload.role !== Roles.INSTRUCTOR)
+            throw new ForbiddenException('Not allowed')
+        const course = await this.getCourseById(courseId)
+        if (payload.id !== course.instructorId)
+            throw new ForbiddenException("You are not allowed to Remove this course")
+        if (course.isDeleted) {
+            throw new BadRequestException('Course already deleted');
+        }
+        const deletedCourse  = await this.prisma.course.update({
+            where: {
+                id: courseId,
+                isDeleted:false
+            }, data: {
+                isDeleted: true,
+                deletedAt: new Date()
+            }
+        })
+        return deletedCourse 
+    }
+    public async restoreCourse(courseId:string,payload:PayloadType){
+        if(payload.role!==Roles.INSTRUCTOR)
+            throw new ForbiddenException('Not Allowed')
+        const course=await this.prisma.course.findUnique({
+            where:{id:courseId}
+        })
+        if(!course)
+            throw new NotFoundException('course not found')
+        if(!course.isDeleted)
+            throw new BadRequestException('Course is already active')
+        if(payload.id!==course.instructorId)
+            throw new ForbiddenException('You are not allowed to restore this course')
+        const restoreCourse=await this.prisma.course.update({
+            where:{id:courseId},
+            data:{
+                isDeleted:false
+            }
+        })
+        return restoreCourse
     }
 }
