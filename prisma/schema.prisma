@@ -25,6 +25,13 @@ enum CourseStatus {
   ARCHIVED
 }
 
+enum FileType {
+  PDF
+  IMAGE
+  VIDEO
+  DOC
+}
+
 model User {
   id                       String               @id @default(cuid())
   name                     String
@@ -56,21 +63,21 @@ model RefreshToken {
 }
 
 model Course {
-  id           String       @id @default(cuid())
-  title        String
-  description  String
-  lessons      Lesson[]
-  bannerUrl    String? // banner for course come from cloudinary
+  id             String       @id @default(cuid())
+  title          String
+  description    String
+  lessons        Lesson[]
+  bannerUrl      String? // banner for course come from cloudinary
   publicBannerId String?
-  instructorId String
-  instructor   User         @relation(fields: [instructorId], references: [id])
-  enrollments  Enrollment[] // users that enroll in this course
-  quizzes      Quiz[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  isDeleted    Boolean      @default(false)
-  deletedAt    DateTime?
-  status       CourseStatus @default(DRAFT)
+  instructorId   String
+  instructor     User         @relation(fields: [instructorId], references: [id])
+  enrollments    Enrollment[] // users that enroll in this course
+  quizzes        Quiz[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  isDeleted      Boolean      @default(false)
+  deletedAt      DateTime?
+  status         CourseStatus @default(DRAFT)
 
   @@unique([title, instructorId]) //to prevent instructor to create multiple course with same title
   @@index([instructorId])
@@ -86,15 +93,29 @@ model Enrollment {
 }
 
 model Lesson {
-  id         String   @id @default(cuid())
-  title      String
-  decription String
-  courseId   String
-  course     Course   @relation(fields: [courseId], references: [id])
-  vedio      String //come from host or cloudinary
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  quizes     Quiz[]
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  courseId    String
+  course      Course       @relation(fields: [courseId], references: [id])
+  order       Int
+  isDeleted   Boolean      @default(false)
+  deletedAt   DateTime?
+  files       LessonFile[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  quizzes     Quiz[]
+  @@unique([courseId,order]) //not two lesson in same course has same order
+  @@index([courseId])// create index 
+}
+
+model LessonFile {
+  id       String @id @default(cuid())
+  url      String
+  type     FileType
+  name     String
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id])
 }
 
 model Quiz {
