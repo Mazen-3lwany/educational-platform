@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 
 
+
 @Injectable()
 
 export class FileUploadService {
@@ -15,14 +16,20 @@ export class FileUploadService {
             secure: true,
         });
     }
-    async uploadFile(file:Express.Multer.File): Promise<UploadApiResponse> {
+    async uploadFile(file: Express.Multer.File): Promise<UploadApiResponse> {
         if (!file) throw new BadRequestException("No file provided");
 
         return new Promise((resolve, reject) => {
             const stream = cloudinary.uploader.upload_stream(
-                { folder: 'users' },
+                {
+                    folder: 'users',
+                    resource_type: 'auto'
+                },
                 (error, result) => {
-                    if (error) return reject(new Error());
+                    if (error) {
+                        console.error("Cloudinary error:", error);
+                        return reject(new Error(error.message || 'Upload failed'));
+                    }
                     resolve(result!);
                 }
             );
@@ -30,7 +37,8 @@ export class FileUploadService {
         });
     }
 
-    async deleteFile(public_Id:string){
+    async deleteFile(public_Id: string) {
         await cloudinary.uploader.destroy(public_Id)
     }
+    
 }

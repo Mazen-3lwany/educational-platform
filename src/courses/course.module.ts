@@ -8,7 +8,8 @@ import { UploadFileModule } from "../uploads/upload.module.js";
 @Module({
     imports:[UserModule,UploadFileModule],
     controllers:[CourseController],
-    providers:[CourseService,PrismaService]
+    providers:[CourseService,PrismaService],
+    exports:[CourseService]
 })
 export class CourseModule {
     

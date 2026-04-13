@@ -112,6 +112,7 @@ model Lesson {
 model LessonFile {
   id       String @id @default(cuid())
   url      String
+  publicId String
   type     FileType
   name     String
   lessonId String
