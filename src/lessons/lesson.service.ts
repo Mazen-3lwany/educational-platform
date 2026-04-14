@@ -1,10 +1,11 @@
-import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma.service.js";
 import { FileUploadService } from "../uploads/upload.service.js";
 import { PayloadType } from "../utils/types.js";
 import { createLessonDto } from "./dto/createLesson.dto.js";
 import { FileType, Roles } from "../../generated/prisma/enums.js";
 import { CourseService } from "../courses/course.service.js";
+import { updateLessonDto } from "./dto/updateLesson.dto.js";
 
 @Injectable()
 export class LessonService {
@@ -94,44 +95,196 @@ export class LessonService {
                 return FileType.PDF;
         }
     }
-    public async getLessonById(lessonId:string){
-        const lesson=await this.prisma.lesson.findFirst(
+    public async getLessonById(lessonId: string) {
+        const lesson = await this.prisma.lesson.findFirst(
             {
-                where:{
-                    id:lessonId,
-                    isDeleted:false
+                where: {
+                    id: lessonId,
+                    isDeleted: false
                 },
                 include:
                 {
-                    
-                    course:{
-                        select:{
-                            id:true,
-                            instructorId:true,
-                            title:true
+
+                    course: {
+                        select: {
+                            id: true,
+                            instructorId: true,
+                            title: true
                         }
                     },
-                    files:true
+                    files: true
                 }
             }
         )
-        if(!lesson)
+        if (!lesson)
             throw new NotFoundException('lesson not found')
         return lesson
     }
-    public async getLessonsBycourseId(courseId:string){
-        const lessons=await this.prisma.lesson.findMany({
-            where:{
+    public async getLessonsBycourseId(courseId: string) {
+        const lessons = await this.prisma.lesson.findMany({
+            where: {
                 courseId,
-                isDeleted:false,
+                isDeleted: false,
             },
-            orderBy:{
-                order:'asc'
+            orderBy: {
+                order: 'asc'
             },
-            include:{
-                files:true
+            include: {
+                files: true
             }
         })
         return lessons;
     }
+    // update lesson
+    public async updateLesson(lessonId: string, updateLessonData: updateLessonDto, payload: PayloadType) {
+        if (
+            updateLessonData.title === undefined &&
+            updateLessonData.description === undefined
+        ) {
+            throw new BadRequestException('No data provided to update');
+        }
+        if (payload.role !== Roles.INSTRUCTOR)
+            throw new ForbiddenException('Not Allowed')
+        const lesson = await this.prisma.lesson.findFirst({
+            where: {
+                id: lessonId,
+                isDeleted: false
+            },
+            include: {
+                course: {
+                    select: {
+                        instructorId: true
+                    }
+                }
+            }
+        });
+        if (!lesson) {
+            throw new NotFoundException('Lesson not found');
+        }
+        if (lesson.course.instructorId !== payload.id)
+            throw new ForbiddenException('You can not upadte this lesson')
+        const data: any = {};
+
+        if (updateLessonData.title !== undefined) {
+            data.title = updateLessonData.title;
+        }
+
+        if (updateLessonData.description !== undefined) {
+            data.description = updateLessonData.description;
+        }
+        const updatedLesson = await this.prisma.lesson.update({
+            where: { id: lessonId },
+            data
+        })
+        return updatedLesson
+    }
+
+    public async addFilesToLesson(files: Express.Multer.File[], lessonId: string, payload: PayloadType) {
+        if (payload.role !== Roles.INSTRUCTOR)
+            throw new ForbiddenException('Not allowed')
+        if (!files || files.length === 0)
+            throw new BadRequestException('you can not add file without data')
+        const lesson = await this.prisma.lesson.findFirst({
+            where: {
+                id: lessonId,
+                isDeleted: false
+            },
+            include: {
+                course: {
+                    select: {
+                        id: true,
+                        instructorId: true
+                    }
+                }
+            }
+        })
+        if (!lesson) {
+            throw new NotFoundException('Lesson not Found')
+        }
+        if (lesson.course.instructorId !== payload.id)
+            throw new ForbiddenException('You can not add files')
+        let uploadfiles: any[] = [];
+        try {
+            uploadfiles = await Promise.all(
+                files.map((file) => this.uploadService.uploadFile(file))
+            )
+        } catch (err) {
+            console.error('Upload error:', err);
+            throw new InternalServerErrorException('File upload failed');
+        }
+        try {
+            const lessonFile = await this.prisma.lessonFile.createMany({
+                data: uploadfiles.map(file => ({
+                    lessonId,
+                    url: file.secure_url,
+                    name: file.original_filename,
+                    type: this.mapFileType(file),
+                    publicId: file.public_id
+                }))
+            })
+            return lessonFile
+        } catch (err) {
+            // cleanup files
+
+            await Promise.all(
+                uploadfiles.map(file =>
+                    this.uploadService.deleteFile(file.public_id as string)
+                )
+            );
+            throw err;
+        }
+    }
+    public async deleteFileFromLesson(lessonId: string, payload: PayloadType, fileId: string) {
+        if (payload.role !== Roles.INSTRUCTOR)
+            throw new ForbiddenException('Not Allowed')
+        const lesson = await this.prisma.lesson.findFirst({
+            where: {
+                id: lessonId,
+                isDeleted: false
+            },
+            include: {
+                course: {
+                    select: {
+                        instructorId: true
+                    }
+                }
+            }
+        })
+        if (!lesson)
+            throw new NotFoundException('Lesson Not found')
+        if (lesson.course.instructorId !== payload.id)
+            throw new ForbiddenException("You cannot delete files from this lesson")
+
+        const file = await this.prisma.lessonFile.findFirst({
+            where: {
+                id: fileId,
+                lessonId: lessonId
+            }
+        });
+
+        if (!file) {
+            throw new NotFoundException('File not found in this lesson');
+        }
+
+        try {
+            await this.uploadService.deleteFile(file.publicId)
+
+            await this.prisma.lessonFile.delete({
+                where: {
+                    id: fileId
+                }
+            })
+            return {
+                message: "File deleted successfully"
+            }
+        } catch (err) {
+            console.error('Delete file error:',err)
+            throw new InternalServerErrorException("delete file Failed")
+        }
+    }
+    public async reOrderLesson(){
+
+    }
+// reOrder
+
 }
