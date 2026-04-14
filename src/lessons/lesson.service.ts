@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, InternalServerErrorException } from "@nestjs/common";
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma.service.js";
 import { FileUploadService } from "../uploads/upload.service.js";
 import { PayloadType } from "../utils/types.js";
@@ -93,5 +93,45 @@ export class LessonService {
             default:
                 return FileType.PDF;
         }
+    }
+    public async getLessonById(lessonId:string){
+        const lesson=await this.prisma.lesson.findFirst(
+            {
+                where:{
+                    id:lessonId,
+                    isDeleted:false
+                },
+                include:
+                {
+                    
+                    course:{
+                        select:{
+                            id:true,
+                            instructorId:true,
+                            title:true
+                        }
+                    },
+                    files:true
+                }
+            }
+        )
+        if(!lesson)
+            throw new NotFoundException('lesson not found')
+        return lesson
+    }
+    public async getLessonsBycourseId(courseId:string){
+        const lessons=await this.prisma.lesson.findMany({
+            where:{
+                courseId,
+                isDeleted:false,
+            },
+            orderBy:{
+                order:'asc'
+            },
+            include:{
+                files:true
+            }
+        })
+        return lessons;
     }
 }

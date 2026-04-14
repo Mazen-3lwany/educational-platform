@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Param, Post, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Post, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AuthGuard } from "../auth/guards/auth.guard.js";
 import { RolesGuard } from "../auth/guards/roles.guard.js";
 import { userRoles } from "../auth/decorators/roles.decorator.js";
@@ -39,5 +39,20 @@ export class LessonController {
         @UploadedFiles() files: Express.Multer.File[]
     ) {
         return this.lessonService.createLesson(courseId, payload, lessonData, files)
+    }
+
+    @Get("/:lessonId")
+    @UseGuards(AuthGuard)
+    public async findSpecificLesson(
+        @Param('lessonId') lessonId:string
+    ){
+        return this.lessonService.getLessonById(lessonId)
+    }
+    @Get('/course/:courseId')
+    @UseGuards(AuthGuard)
+    public async findallLessonsInCourse(
+        @Param('courseId') courseId:string
+    ){
+        return this.lessonService.getLessonsBycourseId(courseId)
     }
 }
