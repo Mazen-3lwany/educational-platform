@@ -6,12 +6,13 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { CourseModule } from './courses/course.module.js';
 import { LessonModule } from './lessons/lesson.module.js';
+import { EnrollModule } from './enrollment/enroll.module.js';
 
 
 
 @Module({
   imports: [ConfigModule.forRoot({isGlobal:true}), UserModule,
-    AuthModule,CourseModule,LessonModule,
+    AuthModule,CourseModule,LessonModule,EnrollModule,
   ThrottlerModule.forRoot({
     throttlers: [
       {

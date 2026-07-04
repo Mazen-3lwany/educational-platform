@@ -87,9 +87,12 @@ model Enrollment {
   id         String   @id @default(cuid())
   studentId  String
   courseId   String
+  progress   Int      @default(0)
+  completed  Boolean  @default(false)
   student    User     @relation(fields: [studentId], references: [id])
   course     Course   @relation(fields: [courseId], references: [id])
   enrolledAt DateTime @default(now())
+  @@unique([studentId, courseId])
 }
 
 model Lesson {
@@ -105,18 +108,19 @@ model Lesson {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   quizzes     Quiz[]
-  @@unique([courseId,order]) //not two lesson in same course has same order
-  @@index([courseId])// create index 
+
+  @@unique([courseId, order]) //not two lesson in same course has same order
+  @@index([courseId]) // create index 
 }
 
 model LessonFile {
-  id       String @id @default(cuid())
+  id       String   @id @default(cuid())
   url      String
   publicId String
   type     FileType
   name     String
   lessonId String
-  lesson   Lesson @relation(fields: [lessonId], references: [id])
+  lesson   Lesson   @relation(fields: [lessonId], references: [id])
 }
 
 model Quiz {
