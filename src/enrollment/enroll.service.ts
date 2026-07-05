@@ -100,4 +100,14 @@ export class EnrollService {
             throw error
         }
     }
+    public async findOne(studentId:string,courseId:string){
+        return await this.prisma.enrollment.findUnique({
+            where:{
+                studentId_courseId:{
+                    studentId,
+                    courseId
+                }
+            }
+        })
+    }
 }

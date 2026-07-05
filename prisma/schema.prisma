@@ -31,6 +31,11 @@ enum FileType {
   VIDEO
   DOC
 }
+enum LessonStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
 
 model User {
   id                       String               @id @default(cuid())
@@ -51,6 +56,7 @@ model User {
   enrollments              Enrollment[] //courses that Student enrolles in
   submissions              QuizSubmission[]
   passwordResetTokens      PasswordResetToken[]
+  studentProgress           LessonProgress[]
 }
 
 model RefreshToken {
@@ -108,7 +114,7 @@ model Lesson {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   quizzes     Quiz[]
-
+  lessonProgress LessonProgress[]
   @@unique([courseId, order]) //not two lesson in same course has same order
   @@index([courseId]) // create index 
 }
@@ -122,7 +128,19 @@ model LessonFile {
   lessonId String
   lesson   Lesson   @relation(fields: [lessonId], references: [id])
 }
-
+model LessonProgress {
+  id          String   @id @default(cuid())
+  studentId   String
+  lessonId    String
+  status      LessonStatus @default(NOT_STARTED)
+  startedAt   DateTime?
+  completedAt DateTime?
+  lastWatchedAt DateTime?
+  watchTime   Int @default(0) // seconds
+  student User @relation(fields: [studentId], references: [id])
+  lesson Lesson @relation(fields: [lessonId], references: [id])
+  @@unique([studentId, lessonId])
+}
 model Quiz {
   id              String           @id @default(cuid())
   title           String
