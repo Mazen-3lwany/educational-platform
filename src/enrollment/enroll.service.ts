@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma.service.js";
 import { CourseService } from "../courses/course.service.js";
-import { UserService } from "../users/user.service.js";
+
 import { Prisma } from "../../generated/prisma/client.js";
 
 @Injectable()
@@ -9,7 +9,7 @@ export class EnrollService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly courseService: CourseService,
-        private readonly userService: UserService
+
 
     ) { }
     public async enrollCourse(userId: string, courseId: string) {
@@ -36,7 +36,9 @@ export class EnrollService {
     }
 
 
-    public async findAllCourseForStudent(studentId: string, page: number, limit: number) {
+    public async findAllCoursesForStudent(studentId: string, page: number, limit: number) {
+        page = Math.max(page, 1);
+        limit = Math.min(Math.max(limit, 1), 50);
         const [courses, total] = await Promise.all([
             this.prisma.enrollment.findMany({
                 where: { studentId },
@@ -76,4 +78,26 @@ export class EnrollService {
         return { students, total, page, limit };
     }
 
+
+    public async unenrollCourse(userId:string,courseId:string){
+        try{
+            await this.prisma.enrollment.delete({
+                where:{
+                    studentId_courseId:{
+                        studentId:userId,
+                        courseId
+                    }
+                }
+            })
+            return {
+                success:true,
+                message:'Successfully unenrolled'
+            }
+        }catch(error){
+            if(error instanceof Prisma.PrismaClientKnownRequestError){
+                if(error.code === 'P2025') throw new NotFoundException('Enrollment not found');
+            }
+            throw error
+        }
+    }
 }
