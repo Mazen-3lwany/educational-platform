@@ -8,6 +8,7 @@ import { CourseModule } from "../courses/course.module.js";
 @Module({
     imports:[UserModule,CourseModule],
     controllers:[EnrollController],
-    providers:[EnrollService,PrismaService]
+    providers:[EnrollService,PrismaService],
+    exports:[EnrollService]
 })
 export class EnrollModule { }

@@ -7,12 +7,13 @@ import { APP_GUARD } from '@nestjs/core';
 import { CourseModule } from './courses/course.module.js';
 import { LessonModule } from './lessons/lesson.module.js';
 import { EnrollModule } from './enrollment/enroll.module.js';
+import { ProgressModule } from './progress/progress.module.js';
 
 
 
 @Module({
   imports: [ConfigModule.forRoot({isGlobal:true}), UserModule,
-    AuthModule,CourseModule,LessonModule,EnrollModule,
+    AuthModule,CourseModule,LessonModule,EnrollModule,ProgressModule,
   ThrottlerModule.forRoot({
     throttlers: [
       {

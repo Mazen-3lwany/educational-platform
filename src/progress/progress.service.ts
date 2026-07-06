@@ -219,5 +219,55 @@ export class ProgressService {
             progress,
         };
     }
+    /**     
+     * @Param studentId:string,courseId:string
+     * @desc this method for get the progress of the student for a specific course
+     * @route GET /progress/students/:studentId/courses/:courseId
+     */
+    public async getProgressForStudentInCourse(
+        studentId: string,
+        courseId: string,
+    ) {
+        const enrollment =
+            await this.enrollService.findOne(
+                studentId,
+                courseId,
+            );
+
+        if (!enrollment) {
+            throw new ForbiddenException('You are not enrolled in this course');
+        }
+        const lessons =
+            await this.lessonService.getLessonsBycourseId(
+                courseId,
+            );
+        const lessonIds = lessons.map((lesson) => lesson.id);
+        const progress =
+            await this.prisma.lessonProgress.findMany({
+                where: {
+                    studentId,
+                    lessonId: {
+                        in: lessonIds,
+                    },
+                },
+            });
+        const completedLessons =
+            progress.filter(
+                p => p.status === LessonStatus.COMPLETED
+            ).length;
+
+        const percentage =
+            lessonIds.length === 0
+                ? 0
+                : Math.floor(
+                    (completedLessons / lessonIds.length) * 100
+                );
+        return {
+            totalLessons: lessonIds.length,
+            completedLessons,
+            progressPercentage: percentage,
+            progress,
+        };
+    }
 }
 
