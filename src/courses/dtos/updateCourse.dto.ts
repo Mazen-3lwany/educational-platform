@@ -17,5 +17,6 @@ export class updateCourse {
     description?: string;
 
     @ApiPropertyOptional({ type: "string", format: "binary", description: "Course banner image (jpg, jpeg, png, webp - max 5MB)" })
+    @IsOptional()
     banner?: any;
 }

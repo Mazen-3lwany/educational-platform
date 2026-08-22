@@ -7,6 +7,7 @@ import { FileUploadService } from "../uploads/upload.service.js";
 import { Prisma, Roles } from "../../generated/prisma/client.js";
 import { updateCourse } from "./dtos/updateCourse.dto.js";
 import { UpdateCourseStatusDto } from "./dtos/updateCourseStatus.dto.js";
+import { RedisService } from "../redis/redis.service.js";
 
 
 @Injectable()
@@ -14,7 +15,8 @@ export class CourseService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly userService: UserService,
-        private readonly uploadService: FileUploadService
+        private readonly uploadService: FileUploadService,
+        private readonly Redis:RedisService
     ) { }
     /**
      * 
@@ -52,6 +54,10 @@ export class CourseService {
                     publicBannerId: publicbannerId
                 }
             })
+            // Delete the cached Course from Redis after create new course
+            await this.Redis.deleteKeysByPattern('courses:page:*')
+            // delete the cached courses by instructorId from Redis after create new course
+            await this.Redis.del(`instructor-courses:${user.id}`)
             return course
         } catch (err) {
             // if there is an error we need to cleanup the uploaded file to avoid orphan files in cloudinary
@@ -73,6 +79,15 @@ export class CourseService {
     }
 
     public async getCourseById(courseId: string) {
+        const cachedKey=`course:${courseId}`
+        console.log('Fetching course from cache or database...')
+        const cachedCourse=await this.Redis.get(cachedKey)
+        if(cachedCourse){
+            console.log('Cache Hit')
+            return JSON.parse(cachedCourse)
+        }
+        console.log('Cache Miss')
+        // 2. Get course from PostgreSQL (DB)
         const course = await this.prisma.course.findFirst({
             where: {
                 id: courseId,
@@ -80,10 +95,21 @@ export class CourseService {
             }
         })
         if (!course) throw new NotFoundException('course not found')
+        
+          // 3. Store course in Redis
+        await this.Redis.set(cachedKey,JSON.stringify(course),300)//
         return course
+
     }
 
     public async getAllCourses(page: number, limit: number) {
+        const cachedKey=`courses:page:${page}:limit:${limit}`
+        const cachedCourses=await this.Redis.get(cachedKey)
+        if(cachedCourses){
+            console.log('Cache Hit')
+            return JSON.parse(cachedCourses)
+        }
+        console.log('Cache Miss')
         const [courses, total] = await Promise.all([
             this.prisma.course.findMany({
                 where: {
@@ -100,15 +126,29 @@ export class CourseService {
                 }
             })
         ])
-        return {
+
+        const response ={
             data: courses,
             total,
             page,
             limit
         }
+
+         // Store the result in Redis for 5 minutes (300 seconds)
+        await this.Redis.set(cachedKey,JSON.stringify(response),300)
+
+
+        return response;
     }
 
     public async getCoursesByInstructor(instructorId: string) {
+        const cahcedKey=`instructor-courses:${instructorId}`
+        const cachedCourses=await this.Redis.get(cahcedKey)
+        if(cachedCourses){
+            console.log('Cache Hit')
+            return JSON.parse(cachedCourses)
+        }
+        console.log("Cache Miss")
         const courses = await this.prisma.course.findMany({
             where: {
                 instructorId: instructorId,
@@ -116,7 +156,9 @@ export class CourseService {
                 isDeleted: false
             }
         })
+        await this.Redis.set(cahcedKey,JSON.stringify(courses),500)
         if (courses.length === 0) return []
+
         return courses
     }
     public async getMyCourses(payload: PayloadType) {
@@ -150,7 +192,7 @@ export class CourseService {
                 data.bannerUrl = result.secure_url
                 data.publicBannerId = result.public_id
                 try {
-                    await this.uploadService.deleteFile(course.publicBannerId!)
+                    await this.uploadService.deleteFile(course.publicBannerId! as string)
                 } catch (err) {
                     console.error('Failed to delete old banner', err)
                 }
@@ -170,6 +212,14 @@ export class CourseService {
             where: { id: courseId },
             data
         })
+        // Delete the cached Course from Redis after update
+        const cachedKey = `course:${courseId}`
+        console.log('Deleting course cache:', cachedKey);
+        await this.Redis.del(cachedKey)
+        console.log('Deleting pagination cache');
+        await this.Redis.deleteKeysByPattern('courses:page:*')
+        console.log('Deleting instructor cache:', `instructor-courses:${payload.id}`);
+        await this.Redis.del(`instructor-courses:${payload.id}`)
         return updateCourse
     }
 
@@ -190,6 +240,10 @@ export class CourseService {
                 status: courseStatus.status
             }
         })
+        // Delete the cached Course from Redis after update
+        await this.Redis.del(`course:${courseId}`)
+        await this.Redis.deleteKeysByPattern('courses:page:*')
+        await this.Redis.del(`instructor-courses:${payload.id}`)
         return updatedCourse
     }
     public async deleteCourse(courseId: string, payload: PayloadType) {
@@ -210,6 +264,11 @@ export class CourseService {
                 deletedAt: new Date()
             }
         })
+        // Delete the cached Course from Redis after delete
+        await this.Redis.del(`course:${courseId}`)
+        // Delete the cached Course list from Redis after delete
+        await this.Redis.deleteKeysByPattern('courses:page:*')
+        await this.Redis.del(`instructor-courses:${payload.id}`)
         return deletedCourse 
     }
     public async restoreCourse(courseId:string,payload:PayloadType){
@@ -230,6 +289,9 @@ export class CourseService {
                 isDeleted:false
             }
         })
+        await this.Redis.del(`course:${courseId}`)
+        await this.Redis.deleteKeysByPattern('courses:page:*')
+        await this.Redis.del(`instructor-courses:${payload.id}`)
         return restoreCourse
     }
 }
