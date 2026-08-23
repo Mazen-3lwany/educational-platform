@@ -222,7 +222,7 @@ Swagger provides detailed information about:
 
 ---
 
-## 🔄 Authentication Flow
+##  Authentication Flow
 
 The authentication system follows this general flow:
 
@@ -248,7 +248,7 @@ The application uses **Refresh Token Rotation** to improve authentication securi
 
 ---
 
-## 📁 API Modules
+##  API Modules
 
 The main API modules currently include:
 

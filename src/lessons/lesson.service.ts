@@ -6,13 +6,15 @@ import { createLessonDto } from "./dto/createLesson.dto.js";
 import { FileType, Roles } from "../../generated/prisma/enums.js";
 import { CourseService } from "../courses/course.service.js";
 import { updateLessonDto } from "./dto/updateLesson.dto.js";
+import { RedisService } from "../redis/redis.service.js";
 
 @Injectable()
 export class LessonService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly uploadService: FileUploadService,
-        private readonly courseService: CourseService
+        private readonly courseService: CourseService,
+        private readonly Redis: RedisService
     ) { }
 
     public async createLesson(
@@ -65,6 +67,7 @@ export class LessonService {
                         }))
                     });
                 }
+                await this.Redis.del(`lesson:course:${courseId}`)
 
                 return newLesson;
             });
@@ -95,7 +98,15 @@ export class LessonService {
                 return FileType.PDF;
         }
     }
+
     public async getLessonById(lessonId: string) {
+        const cachedKey = `lessons:${lessonId}`
+        const cachedLesson = await this.Redis.get(cachedKey)
+        if (cachedLesson) {
+            console.log('Cache Hit')
+            return JSON.parse(cachedLesson)
+        }
+        console.log('Cache Miss')
         const lesson = await this.prisma.lesson.findFirst(
             {
                 where: {
@@ -118,9 +129,19 @@ export class LessonService {
         )
         if (!lesson)
             throw new NotFoundException('lesson not found')
+        await this.Redis.set(cachedKey, JSON.stringify(lesson), 300)
         return lesson
     }
+
     public async getLessonsBycourseId(courseId: string) {
+        const cachedKey = `lesson:course:${courseId}`
+        const cachedLessons = await this.Redis.get(cachedKey)
+        if (cachedLessons) {
+            console.log("Cache Hit")
+            return JSON.parse(cachedLessons)
+        }
+        console.log('Cache Miss')
+
         const lessons = await this.prisma.lesson.findMany({
             where: {
                 courseId,
@@ -133,6 +154,7 @@ export class LessonService {
                 files: true
             }
         })
+        await this.Redis.set(cachedKey, JSON.stringify(lessons), 300)
         return lessons;
     }
     // update lesson
@@ -176,6 +198,9 @@ export class LessonService {
             where: { id: lessonId },
             data
         })
+        // Invalidate the cache for this lesson and its course
+        await this.Redis.del(`lessons:${lessonId}`);
+        await this.Redis.del(`lesson:course:${lesson.courseId}`);
         return updatedLesson
     }
 
@@ -222,6 +247,9 @@ export class LessonService {
                     publicId: file.public_id
                 }))
             })
+            // Invalidate the cache for this lesson and its course
+            await this.Redis.del(`lessons:${lessonId}`);
+            await this.Redis.del(`lesson:course:${lesson.courseId}`);
             return lessonFile
         } catch (err) {
             // cleanup files
@@ -274,17 +302,20 @@ export class LessonService {
                     id: fileId
                 }
             })
+            // Invalidate the cache for this lesson and its course
+            await this.Redis.del(`lessons:${lessonId}`);
+            await this.Redis.del(`lesson:course:${lesson.courseId}`);
             return {
                 message: "File deleted successfully"
             }
         } catch (err) {
-            console.error('Delete file error:',err)
+            console.error('Delete file error:', err)
             throw new InternalServerErrorException("delete file Failed")
         }
     }
-    public async reOrderLesson(){
+    public async reOrderLesson() {
 
     }
-// reOrder
+    // reOrder
 
 }

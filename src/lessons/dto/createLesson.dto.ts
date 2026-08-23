@@ -1,6 +1,6 @@
 // createLesson.dto.ts
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNotEmpty, IsString, Length } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, Length } from "class-validator";
 
 export class createLessonDto {
     @ApiProperty({ example: "Intro to Guards", minLength: 6, maxLength: 20 })
@@ -20,5 +20,6 @@ export class createLessonDto {
         items: { type: "string", format: "binary" },
         description: "Lesson files (images, videos, PDFs, DOC - max 50MB each, up to 10 files)",
     })
+    @IsOptional()
     lessonFiles?: any[];
 }
